@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestão de Produtos</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0d0f14;
+            --surface: #161a23;
+            --surface2: #1e2330;
+            --border: #2a3045;
+            --accent: #e8ff47;
+            --accent2: #47c4ff;
+            --danger: #ff4757;
+            --success: #2ecc71;
+            --text: #e8ecf5;
+            --muted: #7a8499;
+            --radius: 12px;
+            --transition: 0.22s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(232, 255, 71, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(232, 255, 71, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* HEADER */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(13, 15, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 clamp(16px, 5vw, 48px);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.6;
+                transform: scale(0.8);
+            }
+        }
+
+        .api-badge {
+            font-size: 0.68rem;
+            color: var(--accent2);
+            border: 1px solid var(--accent2);
+            border-radius: 20px;
+            padding: 2px 10px;
+            letter-spacing: 0.08em;
+            opacity: 0.85;
+        }
+
+        /* TOAST */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .toast-item {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.78rem;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border-left: 3px solid;
+            backdrop-filter: blur(12px);
+            animation: slideUp 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+            pointer-events: none;
+        }
+
+        .toast-item.success {
+            background: rgba(46, 204, 113, 0.12);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .toast-item.error {
+            background: rgba(255, 71, 87, 0.12);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .toast-item.info {
+            background: rgba(71, 196, 255, 0.12);
+            border-color: var(--accent2);
+            color: var(--accent2);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+        }
+
+        /* MAIN LAYOUT */
+        main {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: clamp(24px, 4vw, 48px) clamp(16px, 5vw, 48px);
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 28px;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* FORM PANEL */
+        .form-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            position: sticky;
+            top: 80px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .panel-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title span.tag {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 400;
+            background: var(--accent);
+            color: #000;
+            padding: 2px 7px;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 7px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.88rem;
+            padding: 11px 14px;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(232, 255, 71, 0.08);
+        }
+
+        input::placeholder {
+            color: var(--muted);
+            opacity: 0.5;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition);
+            letter-spacing: 0.02em;
+            margin-top: 4px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: #f5ff80;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 24px rgba(232, 255, 71, 0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--muted);
+            color: var(--text);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .mode-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-bottom: 18px;
+        }
+
+        .mode-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+        }
+
+        .mode-dot.editing {
+            background: var(--accent2);
+        }
+
+        /* PRODUCTS PANEL */
+        .products-panel {
+            animation: fadeIn 0.5s ease 0.1s both;
+        }
+
+        .products-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .products-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .products-count {
+            font-size: 0.72rem;
+            color: var(--muted);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 3px 12px;
+        }
+
+        .btn-refresh {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-refresh:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-refresh svg {
+            transition: transform 0.4s ease;
+        }
+
+        .btn-refresh:hover svg {
+            transform: rotate(180deg);
+        }
+
+        /* PRODUCT CARDS */
+        #product-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .product-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            transition: border-color var(--transition), transform var(--transition);
+            animation: cardIn 0.3s ease both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--border);
+            transition: background var(--transition);
+        }
+
+        .product-card:hover::before {
+            background: var(--accent);
+        }
+
+        .product-card:hover {
+            border-color: rgba(232, 255, 71, 0.2);
+            transform: translateX(3px);
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateX(-12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .product-id {
+            font-size: 0.65rem;
+            color: var(--muted);
+            letter-spacing: 0.1em;
+            margin-bottom: 4px;
+        }
+
+        .product-name {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 8px;
+        }
+
+        .product-meta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .meta-label {
+            font-size: 0.62rem;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .meta-value {
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .meta-value.price {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .meta-value.stock {
+            color: var(--accent2);
+        }
+
+        .meta-value.stock.low {
+            color: var(--danger);
+        }
+
+        .card-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-edit,
+        .btn-delete {
+            padding: 8px 14px;
+            border-radius: 7px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: 1px solid;
+            white-space: nowrap;
+        }
+
+        .btn-edit {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--muted);
+        }
+
+        .btn-edit:hover {
+            border-color: var(--accent2);
+            color: var(--accent2);
+            background: rgba(71, 196, 255, 0.06);
+        }
+
+        .btn-delete {
+            background: transparent;
+            border-color: var(--border);
+            color: var(--muted);
+        }
+
+        .btn-delete:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+            background: rgba(255, 71, 87, 0.06);
+        }
+
+        /* STATES */
+        .state-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+            gap: 12px;
+        }
+
+        .state-icon {
+            font-size: 2rem;
+            opacity: 0.4;
+        }
+
+        .state-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        .state-desc {
+            font-size: 0.78rem;
+            color: var(--muted);
+            opacity: 0.6;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* CONFIRM MODAL */
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            max-width: 360px;
+            width: 90%;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .modal-desc {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 22px;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-confirm-delete {
+            flex: 1;
+            padding: 11px;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            background: var(--danger);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .btn-confirm-delete:hover {
+            background: #ff6b78;
+        }
+
+        .btn-cancel-delete {
+            flex: 1;
+            padding: 11px;
+            border-radius: 8px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .btn-cancel-delete:hover {
+            color: var(--text);
+            border-color: var(--muted);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 540px) {
+            .product-card {
+                grid-template-columns: 1fr;
+            }
+
+            .card-actions {
+                flex-direction: row;
+            }
+
+            .btn-edit,
+            .btn-delete {
+                flex: 1;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">
+            <div class="logo-dot"></div>
+            Produtos.API
+        </div>
+        <span class="api-badge">localhost:5197</span>
+    </header>
+
+    <div id="toast"></div>
+
+    <!-- Confirm delete modal -->
+    <div id="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Confirmar exclusão</div>
+            <div class="modal-desc" id="modal-desc">Tem certeza que deseja remover este produto? Esta ação não pode ser
+                desfeita.</div>
+            <div class="modal-actions">
+                <button class="btn-cancel-delete" onclick="closeModal()">Cancelar</button>
+                <button class="btn-confirm-delete" id="btn-confirm-delete">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <!-- FORM PANEL -->
+        <aside class="form-panel">
+            <div class="panel-title">
+                Produto
+                <span class="tag" id="form-mode-tag">NOVO</span>
+            </div>
+
+            <div class="mode-indicator">
+                <div class="mode-dot" id="mode-dot"></div>
+                <span id="mode-text">Criando novo produto</span>
+            </div>
+
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" id="input-nome" placeholder="Ex: Notebook Dell XPS" maxlength="100" />
+            </div>
+
+            <div class="form-group">
+                <label>Preço (R$)</label>
+                <input type="number" id="input-preco" placeholder="0.00" min="0" step="0.01" />
+            </div>
+
+            <div class="form-group">
+                <label>Estoque</label>
+                <input type="number" id="input-estoque" placeholder="0" min="0" step="1" />
+            </div>
+
+            <button class="btn btn-primary" id="btn-submit" onclick="submitForm()">Criar Produto</button>
+            <button class="btn btn-secondary" id="btn-cancel" onclick="resetForm()" style="display:none;">Cancelar
+                edição</button>
+        </aside>
+
+        <!-- PRODUCTS PANEL -->
+        <section class="products-panel">
+            <div class="products-header">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <span class="products-title">Produtos cadastrados</span>
+                    <span class="products-count" id="count-badge">— itens</span>
+                </div>
+                <button class="btn-refresh" onclick="loadProducts()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Atualizar
+                </button>
+            </div>
+
+            <div id="product-list">
+                <div class="state-container">
+                    <div class="spinner"></div>
+                    <div class="state-title">Carregando produtos...</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const API = 'http://localhost:5197/api/produto';
+        let editingId = null;
+        let deleteTarget = null;
+
+        // ─── TOAST ───────────────────────────────────────
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast');
+            const el = document.createElement('div');
+            el.className = `toast-item ${type}`;
+            el.textContent = msg;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 3100);
+        }
+
+        // ─── MODAL ───────────────────────────────────────
+        function openModal(id, name) {
+            deleteTarget = id;
+            document.getElementById('modal-desc').textContent =
+                `Remover "${name}" (ID: ${id})? Esta ação não pode ser desfeita.`;
+            document.getElementById('modal-overlay').classList.add('active');
+            document.getElementById('btn-confirm-delete').onclick = confirmDelete;
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+            deleteTarget = null;
+        }
+
+        document.getElementById('modal-overlay').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+
+        // ─── FORM ─────────────────────────────────────────
+        function resetForm() {
+            editingId = null;
+            document.getElementById('input-nome').value = '';
+            document.getElementById('input-preco').value = '';
+            document.getElementById('input-estoque').value = '';
+            document.getElementById('btn-submit').textContent = 'Criar Produto';
+            document.getElementById('btn-cancel').style.display = 'none';
+            document.getElementById('form-mode-tag').textContent = 'NOVO';
+            document.getElementById('mode-dot').classList.remove('editing');
+            document.getElementById('mode-text').textContent = 'Criando novo produto';
+        }
+
+        function startEdit(product) {
+            editingId = product.id;
+            document.getElementById('input-nome').value = product.nome;
+            document.getElementById('input-preco').value = product.preco;
+            document.getElementById('input-estoque').value = product.estoque;
+            document.getElementById('btn-submit').textContent = 'Salvar alterações';
+            document.getElementById('btn-cancel').style.display = 'block';
+            document.getElementById('form-mode-tag').textContent = 'EDITAR';
+            document.getElementById('mode-dot').classList.add('editing');
+            document.getElementById('mode-text').textContent = `Editando produto #${product.id}`;
+            document.querySelector('.form-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        async function submitForm() {
+            const nome = document.getElementById('input-nome').value.trim();
+            const preco = parseFloat(document.getElementById('input-preco').value);
+            const estoque = parseInt(document.getElementById('input-estoque').value);
+
+            if (!nome) return showToast('Informe o nome do produto.', 'error');
+            if (isNaN(preco) || preco < 0) return showToast('Informe um preço válido.', 'error');
+            if (isNaN(estoque) || estoque < 0) return showToast('Informe uma quantidade válida.', 'error');
+
+            const body = { nome, preco, estoque };
+            const btn = document.getElementById('btn-submit');
+            btn.disabled = true;
+            btn.textContent = editingId ? 'Salvando...' : 'Criando...';
+
+            try {
+                if (editingId) {
+                    const res = await fetch(`${API}/${editingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: editingId, ...body })
+                    });
+                    if (!res.ok) throw new Error();
+                    showToast(`Produto #${editingId} atualizado!`, 'success');
+                } else {
+                    const res = await fetch(API, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (!res.ok) throw new Error();
+                    showToast('Produto criado com sucesso!', 'success');
+                }
+                resetForm();
+                await loadProducts();
+            } catch {
+                showToast('Erro ao salvar. Verifique a API.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = editingId ? 'Salvar alterações' : 'Criar Produto';
+            }
+        }
+
+        // ─── DELETE ───────────────────────────────────────
+        async function confirmDelete() {
+            console.log("DELETE ID:", deleteTarget);
+            if (!deleteTarget) return;
+
+            try {
+                const res = await fetch(`${API}/${deleteTarget}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error();
+
+                showToast(`Produto #${deleteTarget} removido.`, 'info');
+
+                if (editingId === deleteTarget) resetForm();
+
+                await loadProducts();
+
+                // ✅ FECHA DEPOIS
+                closeModal();
+
+            } catch {
+                showToast('Erro ao excluir. Verifique a API.', 'error');
+            }
+        }
+
+        // ─── LOAD ─────────────────────────────────────────
+        async function loadProducts() {
+            const list = document.getElementById('product-list');
+            list.innerHTML = `
+      <div class="state-container">
+        <div class="spinner"></div>
+        <div class="state-title">Carregando...</div>
+      </div>`;
+
+            try {
+                const res = await fetch(API);
+                if (!res.ok) throw new Error();
+                const products = await res.json();
+
+                document.getElementById('count-badge').textContent =
+                    `${products.length} ${products.length === 1 ? 'item' : 'itens'}`;
+
+                if (products.length === 0) {
+                    list.innerHTML = `
+          <div class="state-container">
+            <div class="state-icon">📦</div>
+            <div class="state-title">Nenhum produto cadastrado</div>
+            <div class="state-desc">Use o formulário ao lado para adicionar o primeiro produto.</div>
+          </div>`;
+                    return;
+                }
+
+                list.innerHTML = '';
+                products.forEach((p, i) => {
+                    const isLow = p.estoque <= 5;
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.style.animationDelay = `${i * 0.04}s`;
+                    card.innerHTML = `
+          <div>
+            <div class="product-id">#${String(p.id).padStart(4, '0')}</div>
+            <div class="product-name">${escapeHtml(p.nome)}</div>
+            <div class="product-meta">
+              <div class="meta-item">
+                <span class="meta-label">Preço</span>
+                <span class="meta-value price">${formatCurrency(p.preco)}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Estoque</span>
+                <span class="meta-value stock${isLow ? ' low' : ''}">${p.estoque} un${isLow ? ' ⚠' : ''}</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn-edit" onclick='startEdit(${JSON.stringify(p)})'>✎ Editar</button>
+            <button class="btn-delete" onclick='openModal(${p.id}, "${escapeHtml(p.nome)}")'>✕ Excluir</button>
+          </div>`;
+                    list.appendChild(card);
+                });
+            } catch {
+                document.getElementById('count-badge').textContent = '— itens';
+                list.innerHTML = `
+        <div class="state-container">
+          <div class="state-icon">⚠️</div>
+          <div class="state-title">Não foi possível carregar</div>
+          <div class="state-desc">Verifique se a API está rodando em localhost:5197 e se o CORS está habilitado.</div>
+        </div>`;
+                showToast('Falha ao conectar com a API.', 'error');
+            }
+        }
+
+        // ─── UTILS ───────────────────────────────────────
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, c =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        // ─── INIT ─────────────────────────────────────────
+        loadProducts();
+    </script>
+</body>
+
+</html>
